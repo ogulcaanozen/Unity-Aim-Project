@@ -8,22 +8,68 @@ using UnityEngine.SceneManagement;
 
 public class CameraCharacter : MonoBehaviour
 {
-    public float spawnHelper = 4.5f;
-    public GameObject objPrefab;
-    public float ballForce = 700;
-    public float ballCount;
+    public float SpawnHelper { get; set; } = 4.5f;
+    public GameObject ObjPrefab { get; set; }
+    public float BallForce { get; set; } = 700;
+    public float BallCount { get; set; }
+
     private Camera cam;
-    public float camMove;
+    private bool playState;
+    private Rigidbody rb;
+    private BallManager ballManager;
+    private int hitCount;
     
-    public Image cursor;
-    public bool playState;
-    Rigidbody rb;
-    BallManager ballManager;
-    public TextMeshProUGUI ballCountText;
-    public TextMeshProUGUI mainText;
-    public int hitCount;
+    public Image CursorImage { get; set; }
+    public TextMeshProUGUI BallCountText { get; set; }
+    public TextMeshProUGUI MainText { get; set; }
 
     void Start()
+    {
+        Initialize();
+    }
+
+    void Update()
+    {
+        if (playState)
+        {
+            UpdateCursorPosition();
+            UpdateCameraMovement();
+            TryInstantiateBall();
+        }
+    }
+    
+    void UpdateCursorPosition()
+    {
+        cursor.transform.position = Input.mousePosition;
+    }
+    
+    void UpdateCameraMovement()
+    {
+        rb.velocity = new Vector3(0, 0, camMove);
+    }
+    
+    void TryInstantiateBall()
+    {
+        Ray ray = cam.ScreenPointToRay(Input.mousePosition);
+        float mouseX = Input.mousePosition.x;
+        float mouseY = Input.mousePosition.y;
+        Vector3 ballInstantiatePoint = cam.ScreenToWorldPoint(new Vector3(mouseX, mouseY, cam.nearClipPlane + spawnHelper));
+    
+        if (Input.GetMouseButtonDown(0) && ballCount > 0)
+        {
+            InstantiateBall(ray.direction, ballInstantiatePoint);
+        }
+    }
+    
+    void InstantiateBall(Vector3 direction, Vector3 instantiatePoint)
+    {
+        ballCount--;
+        GameObject ballInstance = Instantiate(objPrefab, instantiatePoint, Quaternion.identity);
+        ballInstance.GetComponent<Rigidbody>().AddForce(direction * ballForce);
+        ballCountText.text = ballCount.ToString();
+    }
+
+    private void Initialize()
     {
         ballManager = FindObjectOfType<BallManager>();
         cam = GetComponent<Camera>();
@@ -31,36 +77,9 @@ public class CameraCharacter : MonoBehaviour
         Cursor.visible = false;
 
         playState = true;
-        ballCountText.text = ballCount.ToString();
+        BallCountText.text = BallCount.ToString();
     }
-
-    void Update()
-    {
-        if (playState == true)
-        {
-            cursor.transform.position = Input.mousePosition;
-
-            Ray ray = cam.ScreenPointToRay(Input.mousePosition);
-            Quaternion targetRotation = Quaternion.LookRotation(ray.direction);
-
-            rb.velocity = new Vector3(0, 0, camMove);
-
-            float mousePosx = Input.mousePosition.x;
-            float mousePosy = Input.mousePosition.y;
-            Vector3 BallInstantiatePoint = cam.ScreenToWorldPoint(new Vector3(mousePosx, mousePosy, cam.nearClipPlane + spawnHelper));
-
-            if (Input.GetMouseButtonDown(0) && ballCount > 0)
-            {
-                Vector3 targetloc = ray.direction;
-                ballCount -= 1;
-
-                GameObject ballRigid;
-                ballRigid = Instantiate(objPrefab, BallInstantiatePoint, transform.rotation) as GameObject;
-                ballRigid.GetComponent<Rigidbody>().AddForce(targetloc * ballForce);
-                ballCountText.text = ballCount.ToString();
-            }
-        }
-    }
+    
 
     private void OnTriggerEnter(Collider other)
     {
